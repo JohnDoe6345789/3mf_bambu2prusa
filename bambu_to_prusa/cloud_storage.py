@@ -4,41 +4,55 @@ This module provides lightweight detection of popular cloud storage
 directories so the GUI can offer a sensible default output location.
 """
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable
 
-
-_COMMON_CLOUD_DIRS: tuple[str, ...] = (
+# Common cloud storage root folder names. The order reflects typical install precedence.
+CLOUD_ROOT_CANDIDATES: tuple[str, ...] = (
     "Dropbox",
-    "Google Drive",
     "OneDrive",
     "OneDrive - Personal",
+    "Google Drive",
+    "iCloud Drive",
+)
+
+# Environment variables commonly used by different clients.
+ENV_VAR_CANDIDATES: tuple[str, ...] = (
+    "OneDriveCommercial",
+    "OneDriveConsumer",
+    "OneDrive",
+    "ONEDRIVE",
+    "ONEDRIVE_PATH",
+    "DROPBOX_PATH",
+    "GOOGLE_DRIVE_PATH",
 )
 
 
-def _first_existing_path(paths: Iterable[Path]) -> Optional[str]:
-    for path in paths:
-        if path and path.is_dir():
-            return str(path)
+def _existing_path(candidates: Iterable[Path]) -> Path | None:
+    for candidate in candidates:
+        expanded = candidate.expanduser()
+        if expanded.is_dir():
+            return expanded
     return None
 
 
-def detect_cloud_storage_root() -> Optional[str]:
-    """Return a cloud storage root directory if one exists."""
+def detect_cloud_storage_root(home: Path | None = None) -> Path | None:
+    """Return a cloud storage directory if common options are found."""
 
-    env_candidates = (
-        Path(path)
-        for path in (
-            os.environ.get("DROPBOX_PATH"),
-            os.environ.get("ONEDRIVE"),
-            os.environ.get("ONEDRIVE_PATH"),
-            os.environ.get("GOOGLE_DRIVE_PATH"),
-        )
-        if path
-    )
+    base_home = home or Path.home()
 
-    home = Path.home()
-    home_candidates = (home / name for name in _COMMON_CLOUD_DIRS)
+    env_candidates = [Path(os.environ[var]) for var in ENV_VAR_CANDIDATES if os.environ.get(var)]
 
-    return _first_existing_path((*env_candidates, *home_candidates))
+    fallback_candidates = [base_home / name for name in CLOUD_ROOT_CANDIDATES]
+    onedrive_globs = list(base_home.glob("OneDrive*"))
+
+    icloud_candidates = [
+        base_home / "Library" / "Mobile Documents" / "com~apple~CloudDocs",
+        base_home / "Library" / "CloudStorage" / "iCloud Drive",
+        base_home / "iCloudDrive",
+    ]
+
+    return _existing_path([*env_candidates, *fallback_candidates, *onedrive_globs, *icloud_candidates])
