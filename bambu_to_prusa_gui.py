@@ -1,13 +1,13 @@
 import logging
 import os
 from pathlib import Path
-from tkinter import Button, Canvas, Frame, Label, OptionMenu, PhotoImage, StringVar, Tk, filedialog
+from tkinter import Button, Canvas, Entry, Frame, Label, OptionMenu, PhotoImage, StringVar, Tk, Toplevel, filedialog
 from xml.etree import ElementTree as ET
 
 from bambu_to_prusa.cloud_storage import detect_cloud_storage_root
 from bambu_to_prusa.converter import BambuToPrusaConverter
+from bambu_to_prusa.settings import SettingsManager
 from bambu_to_prusa.theme_engine import Theme, ThemeEngine
-
 
 # Base64-encoded PNG for the Tk window icon so we avoid shipping a binary asset file.
 ICON_IMAGE_BASE64 = (
@@ -91,11 +91,23 @@ def render_svg_on_canvas(canvas: Canvas, svg_path: Path, x_offset: float = 0, y_
             canvas.create_text(x, y, text=content, fill=fill or outline or "white", font=("Segoe UI", size, weight), anchor=anchor)
 
 
+def _first_existing_dir(*paths: str | os.PathLike[str] | None) -> str | None:
+    for path in paths:
+        if not path:
+            continue
+        expanded = Path(path).expanduser()
+        if expanded.is_dir():
+            return str(expanded)
+    return None
+
+
 class ZipProcessorGUI:
     def __init__(self, master):
         logging.debug("Initializing ZipProcessorGUI")
         self.master = master
         master.title("Bambu2Prusa 3mf Processor")
+
+        self.settings = SettingsManager()
 
         self.theme_engine = ThemeEngine(
             base_theme=Theme(
@@ -121,8 +133,8 @@ class ZipProcessorGUI:
         self.theme = self.theme_engine.palette_for(self.theme_name.get())
 
         master.configure(bg=self.theme["bg"])
-        master.geometry("520x560")
-        master.minsize(500, 520)
+        master.geometry("520x590")
+        master.minsize(500, 540)
         master.option_add("*Font", "Segoe UI 11")
         self.icon_image = None
         self._apply_window_icon()
@@ -215,6 +227,13 @@ class ZipProcessorGUI:
         )
         self.process_button.pack(pady=(10, 4), fill="x")
 
+        self.settings_button = self._styled_button(
+            self.buttons,
+            text="Settings",
+            command=self.open_settings_dialog,
+        )
+        self.settings_button.pack(pady=(2, 8), fill="x")
+
         self.status_label = Label(
             self.content,
             text="",
@@ -229,6 +248,9 @@ class ZipProcessorGUI:
         self.output_file = ""
         self.default_output_dir = detect_cloud_storage_root()
         self.converter = BambuToPrusaConverter()
+        self.settings_window = None
+        self.input_dir_var = StringVar(value=self.settings.last_input_dir)
+        self.output_dir_var = StringVar(value=self.settings.last_output_dir)
         self.apply_theme(self.theme)
 
     def _apply_window_icon(self):
@@ -294,8 +316,16 @@ class ZipProcessorGUI:
 
     def select_input(self):
         logging.debug("Selecting input file")
-        self.input_file = filedialog.askopenfilename(filetypes=[("3mf files", "*.3mf")])
+        dialog_options = {"filetypes": [("3mf files", "*.3mf")]}
+        initial_dir = _first_existing_dir(self.settings.last_input_dir)
+        if initial_dir:
+            dialog_options["initialdir"] = initial_dir
+
+        self.input_file = filedialog.askopenfilename(**dialog_options)
         if self.input_file:
+            input_dir = os.path.dirname(self.input_file)
+            self.settings.update_last_input_dir(input_dir)
+            self.input_dir_var.set(input_dir)
             self.status_label.config(
                 text=f"Input file selected: {os.path.basename(self.input_file)}",
                 fg=self.theme["text"],
@@ -305,15 +335,23 @@ class ZipProcessorGUI:
 
     def select_output(self):
         logging.debug("Selecting output file")
-        save_options = {
+        dialog_options = {
             "defaultextension": ".3mf",
             "filetypes": [("3mf files", "*.3mf")],
         }
-        if self.default_output_dir:
-            save_options["initialdir"] = str(self.default_output_dir)
+        initial_dir = _first_existing_dir(
+            self.settings.last_output_dir,
+            self.settings.last_input_dir,
+            self.default_output_dir,
+        )
+        if initial_dir:
+            dialog_options["initialdir"] = initial_dir
 
-        self.output_file = filedialog.asksaveasfilename(**save_options)
+        self.output_file = filedialog.asksaveasfilename(**dialog_options)
         if self.output_file:
+            output_dir = os.path.dirname(self.output_file)
+            self.settings.update_last_output_dir(output_dir)
+            self.output_dir_var.set(output_dir)
             self.status_label.config(
                 text=f"Output file selected: {os.path.basename(self.output_file)}",
                 fg=self.theme["text"],
@@ -358,11 +396,47 @@ class ZipProcessorGUI:
         self.theme_label.configure(fg=self.theme["text"], bg=self.theme["bg"])
         self._style_option_menu(self.theme_menu)
 
-        for button in (self.select_input_button, self.select_output_button, self.process_button):
+        for button in (self.select_input_button, self.select_output_button, self.process_button, self.settings_button):
             primary = getattr(button, "primary", False)
             bg = self.theme["accent"] if primary else self.theme["panel"]
             active_bg = self.theme["accent_alt"] if primary else self.theme["panel_outline"]
             button.configure(bg=bg, activebackground=active_bg, fg="#ffffff")
+
+    def open_settings_dialog(self):
+        if self.settings_window and self.settings_window.winfo_exists():
+            self.settings_window.lift()
+            return
+
+        self.settings_window = Toplevel(self.master)
+        self.settings_window.title("Settings")
+
+        Label(self.settings_window, text="Default input directory:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        Entry(self.settings_window, textvariable=self.input_dir_var, width=50).grid(row=0, column=1, padx=10, pady=5)
+        Button(self.settings_window, text="Browse", command=self.choose_input_dir).grid(row=0, column=2, padx=10, pady=5)
+
+        Label(self.settings_window, text="Default output directory:").grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        Entry(self.settings_window, textvariable=self.output_dir_var, width=50).grid(row=1, column=1, padx=10, pady=5)
+        Button(self.settings_window, text="Browse", command=self.choose_output_dir).grid(row=1, column=2, padx=10, pady=5)
+
+        Button(self.settings_window, text="Save", command=self.save_settings).grid(row=2, column=1, pady=10)
+
+    def choose_input_dir(self):
+        initial_dir = _first_existing_dir(self.input_dir_var.get())
+        directory = filedialog.askdirectory(initialdir=initial_dir or None)
+        if directory:
+            self.input_dir_var.set(directory)
+
+    def choose_output_dir(self):
+        initial_dir = _first_existing_dir(self.output_dir_var.get())
+        directory = filedialog.askdirectory(initialdir=initial_dir or None)
+        if directory:
+            self.output_dir_var.set(directory)
+
+    def save_settings(self):
+        self.settings.update_last_input_dir(self.input_dir_var.get())
+        self.settings.update_last_output_dir(self.output_dir_var.get())
+        if self.settings_window:
+            self.settings_window.destroy()
 
 
 def main():
