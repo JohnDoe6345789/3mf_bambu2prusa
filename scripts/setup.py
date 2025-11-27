@@ -55,8 +55,6 @@ def _run(command: Iterable[str]) -> None:
 def main() -> None:
     repo_root = Path(__file__).resolve().parent.parent
     venv_path = repo_root / ".venv"
-    requirements = repo_root / "requirements.txt"
-
     python_exe = _choose_python()
     print(f"Using Python interpreter: {python_exe}")
 
@@ -71,8 +69,8 @@ def main() -> None:
     print("Upgrading pip ...")
     _run((str(pip_exe), "install", "--upgrade", "pip"))
 
-    print("Installing requirements ...")
-    _run((str(pip_exe), "install", "-r", str(requirements)))
+    print("Installing editable package (with dev extras) ...")
+    _run((str(pip_exe), "install", "--editable", ".[dev]"))
 
     activation_hint = (
         f"source {venv_path / 'bin' / 'activate'}"
