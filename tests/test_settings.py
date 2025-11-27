@@ -28,3 +28,15 @@ def test_settings_invalid_json(tmp_path: Path) -> None:
         "last_input_dir": "",
         "last_output_dir": "",
     }
+
+
+def test_settings_accepts_pathlike(tmp_path: Path) -> None:
+    config_path = tmp_path / "config" / "settings.json"
+    settings = SettingsManager(config_path)
+
+    settings.update_last_input_dir(tmp_path)
+    settings.update_last_output_dir(tmp_path / "out")
+
+    reloaded = SettingsManager(config_path)
+    assert reloaded.last_input_dir == str(tmp_path)
+    assert reloaded.last_output_dir == str(tmp_path / "out")

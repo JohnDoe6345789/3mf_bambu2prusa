@@ -8,11 +8,13 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 
 APP_NAME = "bambu2prusa"
 DEFAULTS = {"last_input_dir": "", "last_output_dir": ""}
+
+PathLike = Union[str, os.PathLike[str]]
 
 
 def _default_config_path() -> Path:
@@ -69,10 +71,15 @@ class SettingsManager:
     def last_output_dir(self) -> str:
         return str(self.settings.get("last_output_dir", ""))
 
-    def update_last_input_dir(self, path: str) -> None:
-        self.settings["last_input_dir"] = path
+    def _normalize_dir(self, path: PathLike) -> str:
+        """Return a string path for storage."""
+
+        return os.fspath(path)
+
+    def update_last_input_dir(self, path: PathLike) -> None:
+        self.settings["last_input_dir"] = self._normalize_dir(path)
         self.save()
 
-    def update_last_output_dir(self, path: str) -> None:
-        self.settings["last_output_dir"] = path
+    def update_last_output_dir(self, path: PathLike) -> None:
+        self.settings["last_output_dir"] = self._normalize_dir(path)
         self.save()

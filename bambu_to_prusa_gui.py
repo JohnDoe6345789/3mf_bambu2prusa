@@ -6,6 +6,13 @@ from bambu_to_prusa.converter import BambuToPrusaConverter
 from bambu_to_prusa.settings import SettingsManager
 
 
+def _first_existing_dir(*paths: str) -> str | None:
+    for path in paths:
+        if path and os.path.isdir(path):
+            return path
+    return None
+
+
 class ZipProcessorGUI:
     def __init__(self, master):
         logging.debug("Initializing ZipProcessorGUI")
@@ -41,8 +48,9 @@ class ZipProcessorGUI:
 
     def select_input(self):
         logging.debug("Selecting input file")
+        initial_dir = _first_existing_dir(self.settings.last_input_dir)
         self.input_file = filedialog.askopenfilename(
-            filetypes=[("3mf files", "*.3mf")], initialdir=self.settings.last_input_dir or None
+            filetypes=[("3mf files", "*.3mf")], initialdir=initial_dir
         )
         if self.input_file:
             input_dir = os.path.dirname(self.input_file)
@@ -52,7 +60,7 @@ class ZipProcessorGUI:
 
     def select_output(self):
         logging.debug("Selecting output file")
-        initial_dir = self.settings.last_output_dir or self.settings.last_input_dir or None
+        initial_dir = _first_existing_dir(self.settings.last_output_dir, self.settings.last_input_dir)
         self.output_file = filedialog.asksaveasfilename(
             defaultextension=".3mf", filetypes=[("3mf files", "*.3mf")], initialdir=initial_dir
         )
