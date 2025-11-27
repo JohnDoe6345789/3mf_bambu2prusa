@@ -4,6 +4,7 @@ from pathlib import Path
 from tkinter import Button, Canvas, Frame, Label, OptionMenu, PhotoImage, StringVar, Tk, filedialog
 from xml.etree import ElementTree as ET
 
+from bambu_to_prusa.cloud_storage import detect_cloud_storage_root
 from bambu_to_prusa.converter import BambuToPrusaConverter
 from bambu_to_prusa.theme_engine import Theme, ThemeEngine
 
@@ -226,6 +227,7 @@ class ZipProcessorGUI:
 
         self.input_file = ""
         self.output_file = ""
+        self.default_output_dir = detect_cloud_storage_root()
         self.converter = BambuToPrusaConverter()
         self.apply_theme(self.theme)
 
@@ -303,7 +305,14 @@ class ZipProcessorGUI:
 
     def select_output(self):
         logging.debug("Selecting output file")
-        self.output_file = filedialog.asksaveasfilename(defaultextension=".3mf", filetypes=[("3mf files", "*.3mf")])
+        save_options = {
+            "defaultextension": ".3mf",
+            "filetypes": [("3mf files", "*.3mf")],
+        }
+        if self.default_output_dir:
+            save_options["initialdir"] = str(self.default_output_dir)
+
+        self.output_file = filedialog.asksaveasfilename(**save_options)
         if self.output_file:
             self.status_label.config(
                 text=f"Output file selected: {os.path.basename(self.output_file)}",
