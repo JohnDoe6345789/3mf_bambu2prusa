@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bambu2prusa"
+version = "0.2.0"
+description = "Convert Bambu Studio 3mf files into PrusaSlicer-compatible archives."
+readme = "README.md"
+authors = [{ name = "Bambu2Prusa Contributors" }]
+license = { file = "LICENSE.md" }
+requires-python = ">=3.8"
+dependencies = [
+    "lxml",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+bambu2prusa = "bambu_to_prusa_gui:main"
+
+[tool.setuptools]
+packages = { find = {} }
+py-modules = ["bambu_to_prusa_gui", "bambu_to_prusa_xml"]
+
+[tool.setuptools.package-data]
+bambu_to_prusa = ["data/3mf_template/**/*", "data/3mf_template/*"]
