@@ -3,10 +3,11 @@ import os
 from tkinter import Button, Entry, Label, StringVar, Tk, Toplevel, filedialog
 
 from bambu_to_prusa.converter import BambuToPrusaConverter
+from bambu_to_prusa.cloud_storage import detect_cloud_storage_root
 from bambu_to_prusa.settings import SettingsManager
 
 
-def _first_existing_dir(*paths: str) -> str | None:
+def _first_existing_dir(*paths: str | None) -> str | None:
     for path in paths:
         if path and os.path.isdir(path):
             return path
@@ -41,6 +42,7 @@ class ZipProcessorGUI:
 
         self.input_file = ""
         self.output_file = ""
+        self.default_output_dir = detect_cloud_storage_root()
         self.converter = BambuToPrusaConverter()
         self.settings_window = None
         self.input_dir_var = StringVar(value=self.settings.last_input_dir)
@@ -60,7 +62,9 @@ class ZipProcessorGUI:
 
     def select_output(self):
         logging.debug("Selecting output file")
-        initial_dir = _first_existing_dir(self.settings.last_output_dir, self.settings.last_input_dir)
+        initial_dir = _first_existing_dir(
+            self.settings.last_output_dir, self.settings.last_input_dir, self.default_output_dir
+        )
         self.output_file = filedialog.asksaveasfilename(
             defaultextension=".3mf", filetypes=[("3mf files", "*.3mf")], initialdir=initial_dir
         )
