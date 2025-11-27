@@ -3,6 +3,7 @@ import os
 from tkinter import Button, Label, Tk, filedialog
 
 from bambu_to_prusa.converter import BambuToPrusaConverter
+from bambu_to_prusa.cloud_storage import detect_cloud_storage_root
 
 
 class ZipProcessorGUI:
@@ -28,6 +29,7 @@ class ZipProcessorGUI:
 
         self.input_file = ""
         self.output_file = ""
+        self.default_output_dir = detect_cloud_storage_root()
         self.converter = BambuToPrusaConverter()
 
     def select_input(self):
@@ -37,7 +39,14 @@ class ZipProcessorGUI:
 
     def select_output(self):
         logging.debug("Selecting output file")
-        self.output_file = filedialog.asksaveasfilename(defaultextension=".3mf", filetypes=[("3mf files", "*.3mf")])
+        save_options = {
+            "defaultextension": ".3mf",
+            "filetypes": [("3mf files", "*.3mf")],
+        }
+        if self.default_output_dir:
+            save_options["initialdir"] = str(self.default_output_dir)
+
+        self.output_file = filedialog.asksaveasfilename(**save_options)
         self.status_label.config(text=f"Output file selected: {os.path.basename(self.output_file)}")
 
     def bambu3mf2prusa3mf(self):
