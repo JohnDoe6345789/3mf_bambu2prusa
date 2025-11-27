@@ -33,7 +33,8 @@ def detect_cloud_storage_root(home: Optional[Path] = None) -> Path | None:
         if os.environ.get(var)
     ]
 
-    onedrive_globs = base_home.glob("OneDrive*")
+    fallback_candidates = [base_home / name for name in CLOUD_ROOT_CANDIDATES]
+    onedrive_globs = list(base_home.glob("OneDrive*"))
 
     icloud_candidates = [
         base_home / "Library" / "Mobile Documents" / "com~apple~CloudDocs",
@@ -41,6 +42,4 @@ def detect_cloud_storage_root(home: Optional[Path] = None) -> Path | None:
         base_home / "iCloudDrive",
     ]
 
-    fallback_candidates = (base_home / name for name in CLOUD_ROOT_CANDIDATES)
-
-    return _existing_path([*env_candidates, *onedrive_globs, *icloud_candidates, *fallback_candidates])
+    return _existing_path([*env_candidates, *fallback_candidates, *onedrive_globs, *icloud_candidates])
