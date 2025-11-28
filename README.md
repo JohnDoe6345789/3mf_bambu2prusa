@@ -23,6 +23,10 @@ pipx install .
 # Windows (Chocolatey)
 choco install python
 pipx install .
+
+# Ubuntu (Linux)
+sudo apt install python3 python3-pip
+pipx install .
 ```
 
 If you prefer a virtual environment, `pip install .` works as well.
