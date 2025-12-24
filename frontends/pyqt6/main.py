@@ -7,7 +7,6 @@ It demonstrates the modular frontend architecture.
 import logging
 import sys
 from pathlib import Path
-from xml.etree import ElementTree as ET
 
 try:
     from PyQt6.QtWidgets import (
@@ -25,7 +24,6 @@ try:
         QWidget,
     )
     from PyQt6.QtCore import Qt
-    from PyQt6.QtGui import QPainter, QColor
     from PyQt6.QtSvgWidgets import QSvgWidget
     PYQT6_AVAILABLE = True
 except ImportError:
