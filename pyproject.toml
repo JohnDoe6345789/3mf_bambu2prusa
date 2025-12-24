@@ -16,9 +16,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
+pyqt6 = ["PyQt6"]
 
 [project.scripts]
-bambu2prusa = "bambu_to_prusa_gui:main"
+bambu2prusa = "frontends.tkinter:main"
+bambu2prusa-cli = "frontends.cli:main"
+bambu2prusa-tkinter = "frontends.tkinter:main"
+bambu2prusa-pyqt6 = "frontends.pyqt6:main"
 
 [tool.setuptools]
 packages = { find = {} }
